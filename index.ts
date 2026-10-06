@@ -1,7 +1,6 @@
 declare module "bun" {
     interface Env {
         EXPIRES_IN: number;
-        ALLOWED_ORIGINS: string;
     }
 }
 import { S3Client } from "bun";
@@ -12,47 +11,45 @@ const requiredEnvVars = [
     "S3_ENDPOINT",
     "PORT",
     "EXPIRES_IN",
-    "ALLOWED_ORIGINS",
 ];
 const missingEnvVars = requiredEnvVars.filter((varName) =>
     !process.env[varName]
 );
 
 if (missingEnvVars.length > 0) {
-    console.error(new Date().toLocaleString(),`Service stop, Because missing environment variables: ${missingEnvVars}`);
+    console.error(
+        `${
+            new Date().toLocaleString()
+        }, Service stop, Because missing environment variables: ${missingEnvVars}`,
+    );
     process.exit(1);
 }
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",").map(
-    (origin) => origin.trim(),
-).filter((origin) => origin !== "");
-
-const s3 = new S3Client({
-    accessKeyId: process.env.S3_ACCESS_KEY_ID,
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-    endpoint: process.env.S3_ENDPOINT,
-    virtualHostedStyle: true,
-});
+const s3 = new S3Client({ virtualHostedStyle: true });
 
 const server = Bun.serve({
     routes: {
-        "/": {
-            POST: (req) => {
-                const origin = req.headers.get("origin") ?? "";
-                const isAllowed = allowedOrigins.includes("*") ||
-                    allowedOrigins.includes(origin);
-                if (!isAllowed) return new Response(null, { status: 403 });
-                const url = s3.presign(crypto.randomUUID(), {
-                    expiresIn: process.env.EXPIRES_IN,
-                    method: "PUT",
-                });
-                return new Response(url, {
-                    headers: { "Access-Control-Allow-Origin": origin },
-                });
-            },
-            GET: () => new Response("S3 Presigned URL Generation Service."),
+        "/version": () => new Response("S3 Presigned URL Service v2"),
+        "/upload": () => {
+            const uploadUrl = s3.presign(crypto.randomUUID(), {
+                expiresIn: process.env.EXPIRES_IN,
+                method: "PUT",
+            });
+            return new Response(uploadUrl);
+        },
+        "/download/:key": (req) => {
+            const downloadUrl = s3.presign(req.params.key, {
+                expiresIn: process.env.EXPIRES_IN,
+            });
+            return new Response(downloadUrl);
+        },
+        "/delete/:key": (req) => {
+            s3.file(req.params.key).delete().catch();
+            return new Response(null, { status: 202 });
         },
     },
     fetch: () => new Response(null, { status: 403 }),
 });
-console.log(new Date().toLocaleString(),`Service start, Listening on ${server.url}`);
+console.info(
+    `${new Date().toLocaleString()}, Service start, Listening on ${server.url}`,
+);

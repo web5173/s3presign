@@ -2,16 +2,12 @@
 Description = s3presign
 
 [Service]
-Type             = simple
-User             = root
-Group            = root
-LimitNOFILE      = 4096
 Restart          = always
 RestartSec       = 5s
-StandardOutput   = append:/root/s3/std.log
-StandardError    = append:/root/s3/std.log
-WorkingDirectory = /root/s3
-ExecStart        = /root/s3/s3presign
+StandardOutput   = append:/opt/s3/std.log
+StandardError    = append:/opt/s3/std.log
+WorkingDirectory = /opt/s3
+ExecStart        = /opt/s3/s3presign
 
 [Install]
 WantedBy = multi-user.target

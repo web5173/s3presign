@@ -1,5 +1,7 @@
 # S3 Presigned URL Generation Service
 
+## Important: 不能直接发布到公网，应该部署在你的业务应用之后，且主应用对客户端进行必要的权限校验
+
 ## 1. Build as a single-file executable:
 
 ```bash
@@ -22,7 +24,6 @@ S3_SECRET_ACCESS_KEY="<secretAccessKey>"
 S3_ENDPOINT="https://<bucket-name>.oss-cn-hangzhou.aliyuncs.com"
 PORT=<which port the server will listen on>
 EXPIRES_IN=<expiration time for a presigned URL>
-ALLOWED_ORIGINS="<allowed sources, separated by comma>"
 ```
 
 ## 3. Create a Systemd service to allow your application to start/restart on its own.
@@ -33,34 +34,43 @@ Usually created in /lib/systemd/system/s3presign.service
 Description = s3presign
 
 [Service]
-Type             = simple
-User             = root
-Group            = root
-LimitNOFILE      = 4096
 Restart          = always
 RestartSec       = 5s
-StandardOutput   = append:/root/s3/std.log
-StandardError    = append:/root/s3/std.log
-WorkingDirectory = /root/s3
-ExecStart        = /root/s3/s3presign
+StandardOutput   = append:/opt/s3/std.log
+StandardError    = append:/opt/s3/std.log
+WorkingDirectory = /opt/s3
+ExecStart        = /opt/s3/s3presign
 
 [Install]
 WantedBy = multi-user.target
 ```
 
-## 4. Check status:
+## 4. Check version:
 
 ```bash
-curl 'url'
+curl 'baseurl/version'
+return: 'S3 Presigned URL Service v2'
 ```
 
-## 5. Get a presigned URL:
+## 5. Get a upload presigned URL:
 
 ```bash
-curl 'url' -X POST
+curl 'baseurl/upload'
+return: 'https://<bucket-name>.oss-cn-hangzhou.aliyuncs.com/<ObjectKey>?<queryString>'
 ```
+## 6. Get a download presigned URL:
 
-## 6. Note: Common commands
+```bash
+curl 'baseurl/download/<ObjectKey>'
+return: 'https://<bucket-name>.oss-cn-hangzhou.aliyuncs.com/<ObjectKey>?<queryString>'
+```
+## 7. Delete a object:
+
+```bash
+curl 'baseurl/delete/<ObjectKey>'
+return: null
+```
+## 8. Note: Common commands
 ```bash
 systemctl status s3presign
 systemctl start s3presign
