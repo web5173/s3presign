@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Example</title>
+</head>
+
+<body>
+    <h1>File Upload Example</h1>
+
+    <input type="file" id="fileInput" />
+    <button id="uploadButton">Upload File</button>
+
+    <script>
+        // 请将此替换为实际的预签名 URL
+        const signedUrl = "http://localhost:9090/"
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (file) {
+                try {
+                    const id = await upload(file, signedUrl);
+                    alert(`File uploaded successfully! ID: ${id}`);
+                } catch (error) {
+                    console.error('Error during upload:', error);
+                    alert('Upload failed: ' + error.message);
+                }
+            } else {
+                alert('Please select a file to upload.');
+            }
+        });
+
+        const upload = async (file, presignedUrl) => {
+            try {
+                const response = await fetch(presignedUrl, { method: 'POST' });
+                if (!response.ok) {
+                    throw new Error("获取签名失败");
+                }
+                const url = await response.text();
+                // 提取文件ID
+                const urlObj = new URL(url);
+                const fileId = urlObj.pathname.split('/').pop();
+                const res = await fetch(url, {
+                    method: 'PUT',
+                    body: file,
+                });
+                if (!res.ok) {
+                    throw new Error(`Upload failed for chunk, status: ${res.status}`);
+                }
+                console.log('上传成功');
+                return fileId; // 返回文件ID
+            } catch (error) {
+                console.error('Error during upload:', error);
+                throw error;
+            }
+        };
+    </script>
+</body>
+
+</html>
